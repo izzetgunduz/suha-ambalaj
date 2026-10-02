@@ -95,6 +95,38 @@ app.put('/api/kullanici-onayla/:id', async (req, res) => {
     }
 });
 
+
+// YENİ KATEGORİ EKLEME
+app.post('/api/kategori-ekle', async (req, res) => {
+    try {
+        const { kategori_adi } = req.body;
+        const yeniKategori = await pool.query(
+            "INSERT INTO kategoriler (kategori_adi) VALUES ($1) RETURNING *",
+            [kategori_adi]
+        );
+        res.status(201).json(yeniKategori.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ hata: "Kategori eklenirken hata oluştu" });
+    }
+});
+
+// YENİ ÜRÜN EKLEME (Senin İstediğin Dinamik Birim ve Fotoğraf Yapısıyla)
+app.post('/api/urun-ekle', async (req, res) => {
+    try {
+        const { kategori_id, urun_adi, marka, satis_birimi, birim_detayi, taban_fiyati, fotograflar } = req.body;
+        
+        const yeniUrun = await pool.query(
+            "INSERT INTO urunler (kategori_id, urun_adi, marka, satis_birimi, birim_detayi, taban_fiyati, fotograflar) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+            [kategori_id, urun_adi, marka, satis_birimi, birim_detayi, taban_fiyati, fotograflar]
+        );
+        res.status(201).json(yeniUrun.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ hata: "Ürün eklenirken hata oluştu" });
+    }
+});
+
 // Sunucuyu 3000 portunda dinlemeye başlıyoruz
 app.listen(port, () => {
     console.log(` Sunucu http://localhost:${port} adresinde çalışıyor.`);
