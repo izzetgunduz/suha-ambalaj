@@ -127,6 +127,42 @@ app.post('/api/urun-ekle', async (req, res) => {
     }
 });
 
+// YENİ SİPARİŞ OLUŞTURMA (Sepeti Onaylama)
+app.post('/api/siparis-olustur', async (req, res) => {
+    // Müşteri ID'si, sepetin genel toplamı ve sepetteki ürünler listesi (array) mobil uygulamadan gelecek
+    const { musteri_id, toplam_tutar, sepet_urunleri } = req.body;
+
+    try {
+        // 1. Önce "siparisler" tablosuna ana fişi (üst kısmı) kesiyoruz
+        const yeniSiparis = await pool.query(
+            "INSERT INTO siparisler (musteri_id, toplam_tutar) VALUES ($1, $2) RETURNING id",
+            [musteri_id, toplam_tutar]
+        );
+        
+        // Veritabanının oluşturduğu o yeni Sipariş Numarasını (ID) alıyoruz
+        const siparis_id = yeniSiparis.rows[0].id; 
+
+        // 2. Şimdi sepetteki HER BİR ürünü "siparis_detaylari" tablosuna o Sipariş Numarasıyla ekliyoruz
+        for (let urun of sepet_urunleri) {
+            await pool.query(
+                "INSERT INTO siparis_detaylari (siparis_id, urun_id, miktar, birim_fiyati, ara_toplam) VALUES ($1, $2, $3, $4, $5)",
+                [siparis_id, urun.urun_id, urun.miktar, urun.birim_fiyati, urun.ara_toplam]
+            );
+        }
+
+        // 3. İşlem başarılıysa Android uygulamamıza "Sipariş Alındı" mesajı dönüyoruz
+        res.status(201).json({ 
+            mesaj: "Sipariş başarıyla oluşturuldu!", 
+            siparis_no: siparis_id 
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ hata: "Sipariş oluşturulurken bir hata meydana geldi." });
+    }
+});
+
+
 // Sunucuyu 3000 portunda dinlemeye başlıyoruz
 app.listen(port, () => {
     console.log(` Sunucu http://localhost:${port} adresinde çalışıyor.`);
